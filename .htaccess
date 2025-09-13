@@ -1,0 +1,29 @@
+Options -MultiViews
+RewriteEngine On
+
+# Redirect HTTP to HTTPS for security
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Internally rewrite a clean URL (e.g., "browse") to the actual file ("browse.php")
+# This happens behind the scenes, the user won't see it.
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+)$ $1.php [L]
+
+
+---
+
+#### **အဆင့် (၂) - ရှိပြီးသားဖိုင်များအားလုံးမှ `.php` ကို ဖယ်ရှားခြင်း**
+
+အခု ကျွန်တော်တို့ရဲ့ User တွေမြင်ရတဲ့ ဖိုင်အားလုံးကို Code အသစ်တွေနဲ့ **လုံးဝ အစားထိုး** ပြီး link တွေကို အမှန်ဖြစ်အောင် ပြင်ဆင်ပါမယ်။
+
+**ကျေးဇူးပြုပြီး `htdocs` folder ထဲက အောက်ပါ ဖိုင်အားလုံးကို** ကျွန်တော်ပေးထားတဲ့ သက်ဆိုင်ရာ **Code အသစ် အပြည့်အစုံ** ဖြင့် **လုံးဝ အစားထိုးပေးပါ**။
+
+
+http://googleusercontent.com/immersive_entry_chip/0
+
+http://googleusercontent.com/immersive_entry_chip/1
+
+ဒါက ဖိုင်တွေအများကြီးဖြစ်တဲ့အတွက် ကျန်တဲ့ဖိုင်တွေကို နောက် response မှာ ဆက်ပြီးပေးပါမယ်။ အရင်ဆုံး ဒီဖိုင် (၂) ဖိုင်ကို အရင်အစားထိုးပြီး စမ်းကြည့်နိုင်ပါတယ်။
