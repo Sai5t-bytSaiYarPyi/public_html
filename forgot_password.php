@@ -1,12 +1,19 @@
 <?php
+// forgot_password.php (Corrected Version for Direct Sending)
+
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
+use PHPMailer\PHPMailer\SMTP;
 
+require 'db_connect.php';
+require 'config.php';
+require 'language_loader.php';
+
+// Load PHPMailer classes
 require 'PHPMailer-6.9.1/src/Exception.php';
 require 'PHPMailer-6.9.1/src/PHPMailer.php';
 require 'PHPMailer-6.9.1/src/SMTP.php';
-require 'config.php'; // Our email config
-require 'db_connect.php'; // Our database connection
+
 
 $message = '';
 $message_type = ''; // 'success' or 'error'
@@ -19,23 +26,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
     $user = $stmt->fetch();
 
     if ($user) {
-        // User exists, generate a token
+        // --- Token Generation (This part is correct) ---
         $token = bin2hex(random_bytes(32));
         $hashed_token = hash('sha256', $token);
         $expires_at = new DateTime('+1 hour');
         $expires_at_str = $expires_at->format('Y-m-d H:i:s');
 
-        // Store the hashed token in the database
-        $sql = "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)";
-        $pdo->prepare($sql)->execute([$email, $hashed_token, $expires_at_str]);
+        $sql_reset = "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)";
+        $pdo->prepare($sql_reset)->execute([$email, $hashed_token, $expires_at_str]);
 
-        // Create the reset link
         $reset_link = "https://najuanime.wuaze.com/reset_password.php?token=" . $token;
 
-        // Send the email
+        // --- Direct Email Sending Logic (This is the new part) ---
         $mail = new PHPMailer(true);
+        
+        // --- ERROR DEBUGGING CODE ---
+        // This will show us any errors if the email fails to send.
+        $mail->SMTPDebug = SMTP::DEBUG_SERVER; 
+        $mail->Debugoutput = 'html'; 
+        // --- END DEBUGGING CODE ---
+
         try {
-            //Server settings
+            //Server settings from config.php
             $mail->isSMTP();
             $mail->Host       = SMTP_HOST;
             $mail->SMTPAuth   = true;
@@ -50,20 +62,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
 
             //Content
             $mail->isHTML(true);
+            $mail->CharSet = 'UTF-8';
             $mail->Subject = 'Password Reset Request for Aether Stream';
+            $mail->Body    = "Hi there,<br><br>You requested a password reset for your Aether Stream account. Please click the link below to set a new password. This link is valid for 1 hour.<br><br><a href='" . $reset_link . "'>Reset Your Password</a><br><br>If you did not request this, please ignore this email.<br><br>Thanks,<br>Aether Stream Support";
             $mail->AltBody = "Hi there,\n\nYou requested a password reset for your Aether Stream account. Please visit the following link to set a new password. This link is valid for 1 hour.\n\nLink: " . $reset_link . "\n\nIf you did not request this, please ignore this email.\n\nThanks,\nAether Stream Support";
 
             $mail->send();
-            
+            $message = $lang['forgot_password_success'];
+            $message_type = 'success';
+
         } catch (Exception $e) {
-            // In a real production site, you would log this error instead of showing it.
-            // For now, we just proceed silently.
+            // If sending fails, show an error message
+            $message = "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+            $message_type = 'error';
         }
+    } else {
+        // If user not found, still show a generic success message for security
+        $message = $lang['forgot_password_success'];
+        $message_type = 'success';
     }
-    
-    // Always show a generic success message to prevent people from checking if an email is registered.
-    $message = "If an account with that email exists, a password reset link has been sent. Please check your inbox (and spam folder).";
-    $message_type = 'success';
 }
 ?>
 <!DOCTYPE html>
@@ -78,22 +95,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
 <body>
     <div class="login-container">
         <div class="logo">AETHER STREAM</div>
-        <h2>Reset Your Password</h2>
+        <h2><?php echo $lang['reset_your_password']; ?></h2>
 
         <?php if ($message): ?>
-            <div class="message <?php echo htmlspecialchars($message_type); ?>"><p><?php echo htmlspecialchars($message); ?></p></div>
+            <div class="message <?php echo htmlspecialchars($message_type); ?>"><p><?php echo nl2br(htmlspecialchars($message)); ?></p></div>
         <?php endif; ?>
 
         <form action="forgot_password.php" method="POST">
-            <p style="color: #ccc; margin-bottom: 20px;">Enter your registered email address below. We will send you a link to reset your password.</p>
+            <p style="color: #ccc; margin-bottom: 20px;"><?php echo $lang['forgot_password_instructions']; ?></p>
             <input type="email" name="email" class="input-field" placeholder="Your Email Address" required autofocus>
-            <button type="submit" class="submit-btn">Send Reset Link</button>
+            <button type="submit" class="submit-btn"><?php echo $lang['send_reset_link']; ?></button>
         </form>
 
         <div class="form-footer-link">
-            <a href="index.php">&larr; Back to Login</a>
+            <a href="/">&larr; <?php echo $lang['back_to_login']; ?></a>
         </div>
     </div>
 </body>
 </html>
-
