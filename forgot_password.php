@@ -1,83 +1,76 @@
 <?php
-// forgot_password.php (Corrected Version for Direct Sending)
+// forgot_password.php (Updated to use SendGrid API)
 
-use PHPMailer\PHPMailer\PHPMailer;
-use PHPMailer\PHPMailer\Exception;
-use PHPMailer\PHPMailer\SMTP;
-
+// Load necessary files
 require 'db_connect.php';
 require 'config.php';
 require 'language_loader.php';
-
-// Load PHPMailer classes
-require 'PHPMailer-6.9.1/src/Exception.php';
-require 'PHPMailer-6.9.1/src/PHPMailer.php';
-require 'PHPMailer-6.9.1/src/SMTP.php';
-
+// Load the SendGrid library that you uploaded
+require 'sendgrid-php/sendgrid-php.php';
 
 $message = '';
 $message_type = ''; // 'success' or 'error'
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
-    $email = trim($_POST['email']);
+    $email_to_reset = trim($_POST['email']);
 
     $stmt = $pdo->prepare("SELECT id FROM users WHERE email = ?");
-    $stmt->execute([$email]);
+    $stmt->execute([$email_to_reset]);
     $user = $stmt->fetch();
 
     if ($user) {
-        // --- Token Generation (This part is correct) ---
+        // --- Token Generation (This logic is still good) ---
         $token = bin2hex(random_bytes(32));
         $hashed_token = hash('sha256', $token);
         $expires_at = new DateTime('+1 hour');
         $expires_at_str = $expires_at->format('Y-m-d H:i:s');
 
-        $sql_reset = "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)";
-        $pdo->prepare($sql_reset)->execute([$email, $hashed_token, $expires_at_str]);
-
-        $reset_link = "https://najuanime.wuaze.com/reset_password.php?token=" . $token;
-
-        // --- Direct Email Sending Logic (This is the new part) ---
-        $mail = new PHPMailer(true);
+        // Delete any old tokens for this email first
+        $del_stmt = $pdo->prepare("DELETE FROM password_resets WHERE email = ?");
+        $del_stmt->execute([$email_to_reset]);
         
-        // --- ERROR DEBUGGING CODE ---
-        // This will show us any errors if the email fails to send.
-        $mail->SMTPDebug = SMTP::DEBUG_SERVER; 
-        $mail->Debugoutput = 'html'; 
-        // --- END DEBUGGING CODE ---
+        // Insert the new token
+        $sql_reset = "INSERT INTO password_resets (email, token, expires_at) VALUES (?, ?, ?)";
+        $pdo->prepare($sql_reset)->execute([$email_to_reset, $hashed_token, $expires_at_str]);
 
+        // Construct the reset link
+        $reset_link = "https://najuianime.online/reset_password.php?token=" . $token;
+
+        // --- Send Email using SendGrid API ---
+        $email = new \SendGrid\Mail\Mail(); 
+        $email->setFrom(MAIL_FROM_ADDRESS, MAIL_FROM_NAME);
+        $email->setSubject("Password Reset Request for Aether Stream");
+        $email->addTo($email_to_reset);
+
+        // HTML Body
+        $html_content = "Hi there,<br><br>You requested a password reset for your Aether Stream account. Please click the link below to set a new password. This link is valid for 1 hour.<br><br>
+                         <a href='" . $reset_link . "' style='background-color:#007AFF;color:white;padding:10px 15px;text-decoration:none;border-radius:5px;'>Reset Your Password</a>
+                         <br><br>If you did not request this, please ignore this email.<br><br>Thanks,<br>Aether Stream Support";
+        $email->addContent("text/html", $html_content);
+        
+        // Plain Text Body (for older email clients)
+        $plain_text_content = "Hi there,\n\nYou requested a password reset for your Aether Stream account. Please visit the following link to set a new password. This link is valid for 1 hour.\n\nLink: " . $reset_link . "\n\nIf you did not request this, please ignore this email.\n\nThanks,\nAether Stream Support";
+        $email->addContent("text/plain", $plain_text_content);
+
+        // Create SendGrid object and send the email
+        $sendgrid = new \SendGrid(SENDGRID_API_KEY);
         try {
-            //Server settings from config.php
-            $mail->isSMTP();
-            $mail->Host       = SMTP_HOST;
-            $mail->SMTPAuth   = true;
-            $mail->Username   = SMTP_USERNAME;
-            $mail->Password   = SMTP_PASSWORD;
-            $mail->SMTPSecure = SMTP_SECURE;
-            $mail->Port       = SMTP_PORT;
-
-            //Recipients
-            $mail->setFrom(MAIL_FROM_ADDRESS, MAIL_FROM_NAME);
-            $mail->addAddress($email);
-
-            //Content
-            $mail->isHTML(true);
-            $mail->CharSet = 'UTF-8';
-            $mail->Subject = 'Password Reset Request for Aether Stream';
-            $mail->Body    = "Hi there,<br><br>You requested a password reset for your Aether Stream account. Please click the link below to set a new password. This link is valid for 1 hour.<br><br><a href='" . $reset_link . "'>Reset Your Password</a><br><br>If you did not request this, please ignore this email.<br><br>Thanks,<br>Aether Stream Support";
-            $mail->AltBody = "Hi there,\n\nYou requested a password reset for your Aether Stream account. Please visit the following link to set a new password. This link is valid for 1 hour.\n\nLink: " . $reset_link . "\n\nIf you did not request this, please ignore this email.\n\nThanks,\nAether Stream Support";
-
-            $mail->send();
-            $message = $lang['forgot_password_success'];
-            $message_type = 'success';
-
+            $response = $sendgrid->send($email);
+            if ($response->statusCode() == 202) { // 202 means Accepted
+                $message = $lang['forgot_password_success'];
+                $message_type = 'success';
+            } else {
+                $message = 'Error: Could not send email. Status: ' . $response->statusCode();
+                $message_type = 'error';
+            }
         } catch (Exception $e) {
-            // If sending fails, show an error message
-            $message = "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+            $message = 'Error sending email: '. $e->getMessage();
             $message_type = 'error';
         }
+
     } else {
-        // If user not found, still show a generic success message for security
+        // Security: Even if user not found, show a generic success message
+        // This prevents people from guessing which emails are registered.
         $message = $lang['forgot_password_success'];
         $message_type = 'success';
     }
@@ -101,7 +94,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['email'])) {
             <div class="message <?php echo htmlspecialchars($message_type); ?>"><p><?php echo nl2br(htmlspecialchars($message)); ?></p></div>
         <?php endif; ?>
 
-        <form action="forgot_password.php" method="POST">
+        <form action="/forgot_password" method="POST">
             <p style="color: #ccc; margin-bottom: 20px;"><?php echo $lang['forgot_password_instructions']; ?></p>
             <input type="email" name="email" class="input-field" placeholder="Your Email Address" required autofocus>
             <button type="submit" class="submit-btn"><?php echo $lang['send_reset_link']; ?></button>
