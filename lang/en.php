@@ -39,12 +39,6 @@ $lang = [
     'username_email_taken' => 'Username or email is already taken.',
     'registration_success' => 'Registration successful! You can now log in.',
 
-    // Forgot Password
-    'reset_your_password' => 'Reset Your Password',
-    'forgot_password_instructions' => 'Enter your registered email address below. We will send you a link to reset your password.',
-    'send_reset_link' => 'Send Reset Link',
-    'forgot_password_success' => 'If an account with that email exists, a password reset link has been sent. Please check your inbox (and spam folder).',
-
     // Reset Password
     'set_new_password' => 'Set a New Password',
     'enter_new_password' => 'Enter New Password',
@@ -98,4 +92,21 @@ $lang = [
     
     // Manhwa Page
     'manhwa' => 'Manhwa',
+    
+    'forgot_password' => 'Forgot Password?',
+    'reset_password' => 'Reset Password',
+    'forgot_password_instructions' => 'Enter your email address and we will send you a link to reset your password.',
+    'send_reset_link' => 'Send Reset Link',
+    'back_to_login' => 'Back to Login',
+    'reset_link_sent' => 'A password reset link has been sent to your email address.',
+    'email_send_error' => 'Could not send email. Please try again later',
+    'email_not_found' => 'No user found with that email address.',
+    'new_password' => 'New Password',
+    'confirm_new_password' => 'Confirm New Password',
+    'passwords_do_not_match' => 'Passwords do not match.',
+    'password_too_short' => 'Password must be at least 6 characters long.',
+    'password_reset_success' => 'Your password has been successfully reset. You can now log in.',
+    'password_reset_error' => 'An error occurred while resetting your password. Please try again.',
+    'invalid_or_expired_token' => 'This password reset token is invalid or has expired.',
+    'no_token_provided' => 'No reset token provided.',
 ];
