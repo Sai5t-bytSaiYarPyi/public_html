@@ -1,0 +1,17 @@
+Options -MultiViews
+RewriteEngine On
+
+# Redirect HTTP to HTTPS for security
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Internally rewrite a clean URL (e.g., "browse") to the actual file ("browse.php")
+# This happens behind the scenes, the user won't see it.
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME}.php -f
+RewriteRule ^(.+)$ $1.php [L]
+
+# Enable PHP error logging
+php_value log_errors On
+php_value error_log "/home/u873003635/domains/najuanime.online/public_html/php_errors.log"
