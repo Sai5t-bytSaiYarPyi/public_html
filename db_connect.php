@@ -4,9 +4,9 @@
 
 // --- START: YOUR DATABASE DETAILS ---
 $db_host = "localhost"; 
-$db_name = "u873003635_20252026"; 
-$db_user = "u873003635_naju_anime";
-$db_pass = "pVyHAH1?g";
+$db_name = "u873003635_NaJuAnime202"; 
+$db_user = "u873003635_naju_anime202";
+$db_pass = "SaiYarPyi@2007";
 // --- END: YOUR DATABASE DETAILS ---
 
 
